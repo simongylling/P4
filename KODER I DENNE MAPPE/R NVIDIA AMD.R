@@ -29,6 +29,14 @@ var_nvda_annual <- cov_annual[1,1]
 var_amd_annual  <- cov_annual[2,2]
 cor_matrix <- cor(returns)  # Korrelation ændres ikke
 
+# Scatterplot matrix
+returns_df <- as.data.frame(returns)
+ggpairs(returns_df,
+        title = "Scatterplot Matrix: Coca-Cola vs Pepsi",
+        upper = list(continuous = wrap("cor", size = 5)),
+        lower = list(continuous = wrap("points", alpha = 0.5)),
+        diag = list(continuous = wrap("densityDiag")))
 # Print annualiserede værdier
 cov_annual
 cor_matrix
+
