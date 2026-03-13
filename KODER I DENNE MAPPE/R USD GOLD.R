@@ -33,3 +33,10 @@ cor_matrix <- cor(returns)  # Korrelation ændres ikke
 cov_annual
 cor_matrix
 
+# Scatterplot matrix
+returns_df <- as.data.frame(returns)
+ggpairs(returns_df,
+        title = "Scatterplot Matrix: Coca-Cola vs Pepsi",
+        upper = list(continuous = wrap("cor", size = 5)),
+        lower = list(continuous = wrap("points", alpha = 0.5)),
+        diag = list(continuous = wrap("densityDiag")))
