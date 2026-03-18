@@ -88,7 +88,10 @@ df <- data.frame(Return = mu_seq, Risk = sd_seq)
 mu_min <- df$Return[which.min(df$Risk)]
 efficient <- df[df$Return >= mu_min, ]
 
-ggplot(df, aes(Risk, Return)) +
+
+output_file <- "C:/Users/Victor/OneDrive/AAU/4. semester/Projekt/Overleaf/Billeder"
+
+p <- ggplot(df, aes(Risk, Return)) +
   geom_path(color = "grey", linewidth = 0.8) +
   geom_path(data = efficient, color = "steelblue", linewidth = 1.2) +
   
@@ -102,3 +105,11 @@ ggplot(df, aes(Risk, Return)) +
        x = "Risk",
        y = "Return") +
   theme_minimal()
+
+ggsave(
+  filename = paste0(output_file, "/efficient_frontier.png"),
+  plot = p,
+  width = 8,
+  height = 6,
+  dpi = 300
+)
