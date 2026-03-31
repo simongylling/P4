@@ -13,7 +13,7 @@ set.seed(123)
 ## rho = 1
 
 # Simuler "returns"
-r_x1 <- rnorm(500, 0, 0.01)
+r_x1 <- rnorm(1000, 0, 1)
 r_y1 <- 2 * r_x1   
 
 returns_1 <- na.omit(data.frame(X = r_x1, Y = r_y1))
@@ -52,7 +52,7 @@ ggsave(
 ## rho = -1
 
 # Simuler "returns"
-r_x2 <- rnorm(500, 0, 0.01)
+r_x2 <- rnorm(1000, 0, 1)
 r_y2 <- -2 * r_x2
 
 returns_2 <- na.omit(data.frame(X = r_x2, Y = r_y2))
@@ -89,8 +89,8 @@ ggsave(
 ## rho = 0
 
 # Simuler "returns"
-r_x0 <- rnorm(500, 0, 0.01)
-r_y0 <- rnorm(500, 0, 0.01)
+r_x0 <- rnorm(1000, 0, 1)
+r_y0 <- rnorm(1000, 0, 1)
 
 returns_0 <- na.omit(data.frame(X = r_x0, Y = r_y0))
 
@@ -114,7 +114,7 @@ P3 <- ggpairs(returns_0,
         lower = list(continuous = wrap("points", alpha = 0.5)),
         diag = list(continuous = wrap("densityDiag")))
 
-ggsave(
+ ggsave(
   filename = paste0(output_file, "/rho0.png"),
   plot = P3,
   width = 8,
