@@ -8,10 +8,138 @@ output: html_document
 
 ```{r setup, include=FALSE, warning=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-knitr::opts_chunk$set(fig.width = 5, fig.height = 3)
 knitr::opts_chunk$set(warning = FALSE)
 library(tidyverse)
-library(quantmod)
+library(tidyfinance)
+library(scales)
+library(ggrepel)
 ```
+
+```{r}
+prices <- download_data(type = "stock_prices",
+                         symbols = c("AAPL", "MSFT", "NVDA"),
+                         start_date = "2010-01-01",
+                         end_date = Sys.Date())
+
+prices %>% 
+  ggplot(aes(x = date,
+             y = adjusted_close,
+             color = symbol)) +
+  geom_line() +
+  labs(x = NULL,
+       y = NULL,
+       title = "Stock prices") +
+  theme_minimal()
+  
+```
+
+```{r}
+returns <- prices %>% 
+  group_by(symbol) %>% 
+  arrange(date) %>% 
+  mutate(ret = adjusted_close/lag(adjusted_close)-1) %>% 
+  select(symbol, date, ret) %>% 
+  drop_na(ret)
+
+returns %>% 
+  group_by(symbol) %>% 
+  summarise(across(ret,
+                   list(
+                     daily_mean = mean,
+                     daily_st = sd,
+                     daily_min = min,
+                     daily_max = max
+                   ),
+                   .names = "{.fn}")) %>% 
+  print(n = Inf)
+```
+```{r}
+returns %>% 
+  ggplot(aes(x = ret,
+             color = symbol)) +
+  geom_histogram(bins = 100) +
+  facet_wrap(~symbol, scale = "free_y") + 
+  theme_minimal()
+```
+
+
+```{r}
+trading_volume <- prices %>% 
+  group_by(symbol, date) %>% 
+  summarize(trading_volume = sum(adjusted_close*volume))
+
+trading_volume %>% 
+  ggplot(aes(x = date,
+             y = trading_volume,
+             colour = symbol))+
+  geom_line() +
+  facet_wrap(~symbol, scales = "free") +
+  scale_y_continuous(labels = unit_format(unit = "M", scale = 1e-9)) +
+  labs(x = NULL,
+       y = NULL,
+       title = "Trading volume for Apple, Microsoft, and Nvidia") +
+  theme_minimal()
+
+```
+
+```{r}
+prices <- prices %>% 
+  group_by(symbol) %>% 
+  mutate(n = n()) %>% 
+  ungroup() %>% 
+  filter(n == max(n)) %>% 
+  select(-n)
+
+returns <- prices %>% 
+  group_by(symbol, date) %>% 
+  summarize(price = last(adjusted_close), .groups = "drop_last") %>% 
+  mutate(dailyret = price/lag(price)-1) %>% 
+  drop_na(dailyret) %>% 
+  select(-price)
+
+assets <- returns %>% 
+  group_by(symbol) %>% 
+  summarize(mu = mean(dailyret),
+            var = var(dailyret))
+```
+```{r}
+assets %>% 
+  ggplot(aes(x = var,
+             y = mu,
+             label = symbol)) +
+  geom_point() +
+  geom_text_repel() +
+  scale_x_continuous(labels = percent) +
+  scale_y_continuous(labels = percent) +
+  labs(x = "Volatility",
+       y = "Expected return",
+       title = "Expected returns and volatilities") +
+  theme_minimal()
+```
+```{r}
+returns_wide <- returns %>% 
+  pivot_wider(names_from = symbol,
+              values_from = dailyret)
+
+sigma <- returns_wide %>% 
+  select(-date) %>% 
+  cov()
+
+sigma %>% 
+  as_tibble(rownames = "symbol_a") |> 
+  pivot_longer(-symbol_a, names_to = "symbol_b") |> 
+  ggplot(aes(x = symbol_a, y = fct_rev(symbol_b), fill = value)) +
+  geom_tile() +
+  labs(
+    x = NULL, y = NULL, fill = "Covariance",
+    title = "Sample covariance matrix of selected assets"
+  ) + 
+  scale_fill_continuous(labels = percent)  +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        legend.position = "bottom") +
+  guides(fill = guide_colorbar(barwidth = 15, barheight = 0.5))
+```
+
+
 
 
