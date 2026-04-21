@@ -46,7 +46,7 @@ subset_returns %>%
   facet_wrap(~symbol, scales = "free") +
   labs(title = "Histogram over daily returns for AMZN, BRK-B, GOOG, LLY, and NVDA",
        x = "Return",
-       y = "Frequency")
+       y = "Frequency") +
   theme_minimal()
 ```
 ```{r}
@@ -111,12 +111,40 @@ ggcorrplot(
 *Weighs for the minimum variance portfolio*
 
 ```{r}
+sigma <- returns_wide %>% 
+  select(-date) %>% 
+  cov()
+
 u <- rep(1, dim(sigma)[1])
 sigma_inv <- solve(sigma)
-X_MIN <- as.vector(sigma_inv %*% u) / as.numeric(u %*% sigma_inv %*% u)
+x_MIN <- as.vector(sigma_inv %*% u) / as.numeric(u %*% sigma_inv %*% u)
 ```
 
 ```{r}
+assets <- assets %>% 
+  mutate(x_MIN = x_MIN)
 
+assets %>% 
+  ggplot(aes(x = x_MIN,
+             y = fct_reorder(symbol, x_MIN),
+             fill = x_MIN > 0)) +
+  geom_col() +
+  scale_x_continuous(labels = percent) +
+  labs(x = NULL,
+       y = NULL,
+       title = "Portfolio weights for minimum variance") +
+  theme(legend.position = "none")
+```
+We denote $\overline{R}$ by $\mu$ in what follows.
+```{r}
+mu <- assets$mu
+tau <- seq(0,)
+
+z_star <- sigma_inv %*% mu -
+  (as.numeric(u %*% sigma_inv %*% mu) /
+   as.numeric(u %*% sigma_inv %*% u)) *
+  sigma_inv %*% u
+
+x_tau <- x_MIN + (tau / 2) * z_star
 ```
 
