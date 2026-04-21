@@ -120,6 +120,7 @@ sigma_inv <- solve(sigma)
 x_MIN <- as.vector(sigma_inv %*% u) / as.numeric(u %*% sigma_inv %*% u)
 ```
 
+
 ```{r}
 assets <- assets %>% 
   mutate(x_MIN = x_MIN)
@@ -138,13 +139,22 @@ assets %>%
 We denote $\overline{R}$ by $\mu$ in what follows.
 ```{r}
 mu <- assets$mu
-tau <- seq(0,)
 
 z_star <- sigma_inv %*% mu -
   (as.numeric(u %*% sigma_inv %*% mu) /
    as.numeric(u %*% sigma_inv %*% u)) *
   sigma_inv %*% u
 
-x_tau <- x_MIN + (tau / 2) * z_star
+assets <- assets %>% 
+  mutate(z_star = z_star)
+assets %>% 
+  ggplot(aes(x = z_star,
+             y = fct_reorder(symbol, z_star),
+             fill = z_star > 0)) +
+  geom_col() +
+  labs(x = NULL,
+       y = NULL,
+       title = "Portfolio weights for z* portfolio") +
+  theme(legend.position = "none")
 ```
 
