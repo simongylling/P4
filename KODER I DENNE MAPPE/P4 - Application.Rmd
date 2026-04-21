@@ -13,6 +13,7 @@ library(tidyverse)
 library(tidyfinance)
 library(scales)
 library(ggrepel)
+library(ggcorrplot)
 ```
 
 ```{r}
@@ -69,25 +70,21 @@ returns_wide <- returns %>%
   pivot_wider(names_from = symbol,
               values_from = dailyret)
 
-sigma <- returns_wide %>% 
+sigma_c <- returns_wide %>% 
   select(-date) %>% 
   cor(use = "pairwise.complete.obs")
 
-sigma %>% 
-  as_tibble(rownames = "symbol_a") |> 
-  pivot_longer(-symbol_a, names_to = "symbol_b") |> 
-  ggplot(aes(x = symbol_a, y = fct_rev(symbol_b), fill = value)) +
-  geom_tile() +
-  labs(
-    x = NULL, y = NULL, fill = "Covariance",
-    title = "Sample covariance matrix of selected assets"
-  ) + 
-  scale_fill_continuous(labels = percent)  +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1),
-        legend.position = "bottom") +
-  guides(fill = guide_colorbar(barwidth = 15, barheight = 0.5))
+sigma_c %>% 
+ggcorrplot(
+  type = "upper",
+  hc.order = TRUE,
+  outline.color = "white",
+  colors = c("blue", "white", "red"),
+  show.diag = TRUE) +
+  theme(
+  axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)
+)
 ```
-
 
 
 
