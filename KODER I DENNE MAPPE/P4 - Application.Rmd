@@ -137,6 +137,8 @@ assets %>%
   theme(legend.position = "none")
 ```
 We denote $\overline{R}$ by $\mu$ in what follows.
+
+
 ```{r}
 mu <- assets$mu
 
@@ -157,4 +159,46 @@ assets %>%
        title = "Portfolio weights for z* portfolio") +
   theme(legend.position = "none")
 ```
+
+```{r}
+tau <- seq(0,0.1, by =0.001)
+A <- as.numeric(u %*% sigma_inv %*% mu)
+B <- as.numeric(mu %*% sigma_inv %*% mu)
+C <- as.numeric(u %*% sigma_inv %*% u)
+D <- B*C-A^2
+
+x_efc <- sapply(tau, function(tau_val) {
+  x_MIN + (tau_val/2)*z_star
+})
+
+summary_min <- tibble(mu = A/C,
+                      sd = sqrt(1/C),
+                      type = "Minimum-Variance Portfolio")
+
+summary_efc <- tibble(tau = tau,
+                      mu = (A/C) + (tau/2)*(D/C),
+                      sd = sqrt((1/C)+(tau^2/4)*(D/C)),
+                      type = "Efficient Portfolio")
+
+summaries <- bind_rows(summary_min, summary_efc)
+```
+Now the data is ready for the efficient frontier plot:
+```{r}
+summaries %>% 
+  ggplot(aes(x = sd,
+             y = mu)) +
+  geom_line(color = "steelblue") +
+  geom_point(
+    data = summary_min,
+    color = "red",
+    size = 3
+  ) +
+  scale_x_continuous(labels = percent) +
+  scale_y_continuous(labels = percent) +
+  labs(x = "Risk (σ)", 
+       y = "Expected return (μ)",
+       title = "Efficient Frontier") +
+  theme_minimal()
+```
+
 
