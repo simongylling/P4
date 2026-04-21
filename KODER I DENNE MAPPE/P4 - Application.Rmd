@@ -24,6 +24,7 @@ prices <- download_data(type = "stock_prices",
   
 ```
 
+
 ```{r}
 returns <- prices %>% 
   group_by(symbol) %>% 
@@ -35,9 +36,29 @@ returns <- prices %>%
 ```
 
 ```{r}
-returns %>% 
+subset_returns <- returns %>% 
+  filter(symbol %in% c("NVDA", "BRK-B", "AMZN", "LLY", "GOOG", "CAT"))
+
+subset_returns %>% 
   ggplot(aes(x = dailyret)) +
-  geom_histogram(bins = 100) +
+  geom_histogram(bins = 100,
+                 fill = "steelblue") +
+  facet_wrap(~symbol, scales = "free") +
+  labs(title = "Histogram over daily returns for AMZN, BRK-B, GOOG, LLY, and NVDA",
+       x = "Return",
+       y = "Frequency")
+  theme_minimal()
+```
+```{r}
+subset_returns %>% 
+  ggplot(aes(sample = dailyret)) +
+  stat_qq() +
+  stat_qq_line(color = "red") +
+  facet_wrap(~symbol, scales = "free") +
+  labs(
+    x = "Theoretical quantiles",
+    y = "Sample quantiles"
+  ) +
   theme_minimal()
 ```
 
@@ -85,5 +106,17 @@ ggcorrplot(
   axis.text.y = element_text(size = 10)) 
 ```
 
+**Markowitz:**
 
+*Weighs for the minimum variance portfolio*
+
+```{r}
+u <- rep(1, dim(sigma)[1])
+sigma_inv <- solve(sigma)
+X_MIN <- as.vector(sigma_inv %*% u) / as.numeric(u %*% sigma_inv %*% u)
+```
+
+```{r}
+
+```
 
