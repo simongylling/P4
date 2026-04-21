@@ -17,19 +17,9 @@ library(ggrepel)
 
 ```{r}
 prices <- download_data(type = "stock_prices",
-                         symbols = c("AAPL", "MSFT", "NVDA"),
-                         start_date = "2010-01-01",
-                         end_date = Sys.Date())
-
-prices %>% 
-  ggplot(aes(x = date,
-             y = adjusted_close,
-             color = symbol)) +
-  geom_line() +
-  labs(x = NULL,
-       y = NULL,
-       title = "Stock prices") +
-  theme_minimal()
+                         symbols = c("AAPL","NVDA", "JPM", "MSFT", "GOOGL", "LLY", "GOOG", "META", "ASML", "HSBC", "GS", "NESN.SW", "AMZN", "TSLA", "NEE", "CBA.AX", "WELL", "BRK-B", "NEM", "SU", "JNJ", "SIE.DE", "MU", "7203.T", "AMD", "CSCO", "ORCL", "XOM", "CAT", "ABBV"),
+                         start_date = "2016-01-01",
+                         end_date = "2026-04-21")
   
 ```
 
@@ -41,17 +31,6 @@ returns <- prices %>%
   select(symbol, date, ret) %>% 
   drop_na(ret)
 
-returns %>% 
-  group_by(symbol) %>% 
-  summarise(across(ret,
-                   list(
-                     daily_mean = mean,
-                     daily_st = sd,
-                     daily_min = min,
-                     daily_max = max
-                   ),
-                   .names = "{.fn}")) %>% 
-  print(n = Inf)
 ```
 ```{r}
 returns %>% 
@@ -134,7 +113,11 @@ sigma %>%
     x = NULL, y = NULL, fill = "Covariance",
     title = "Sample covariance matrix of selected assets"
   ) + 
-  scale_fill_continuous(labels = percent)  +
+  scale_fill_gradient2(
+  low = "blue",
+  mid = "white",
+  high = "red"
+)  +
   theme(axis.text.x = element_text(angle = 45, hjust = 1),
         legend.position = "bottom") +
   guides(fill = guide_colorbar(barwidth = 15, barheight = 0.5))
