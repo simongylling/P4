@@ -18,7 +18,7 @@ library(ggcorrplot)
 
 ```{r}
 prices <- download_data(type = "stock_prices",
-                         symbols = c("AAPL","NVDA", "JPM", "MSFT", "GOOGL", "LLY", "GOOG", "META", "ASML", "HSBC", "GS", "NESN.SW", "AMZN", "TSLA", "NEE", "CBA.AX", "WELL", "BRK-B", "NEM", "SU", "JNJ", "SIE.DE", "MU", "7203.T", "AMD", "CSCO", "ORCL", "XOM", "CAT", "ABBV"),
+                         symbols = c("AAPL","NVDA", "MSFT", "BRK-B", "JPM", "V", "CAT", "GE", "RTX", "AMZN", "TSLA", "HD", "LLY", "JNJ", "ABBV", "GOOG", "META", "NFLX", "WMT", "COST", "PG", "XOM", "CVX", "COP", "LIN", "NEM", "FCX", "NEE", "SO", "DUK", "WELL", "PLD", "EQIX"),
                          start_date = "2016-01-01",
                          end_date = "2026-04-20")
   
@@ -58,11 +58,9 @@ assets %>%
              label = symbol)) +
   geom_point() +
   geom_text_repel() +
-  scale_x_continuous(labels = percent) +
-  scale_y_continuous(labels = percent) +
   labs(x = "Volatility",
        y = "Expected return",
-       title = "Expected returns and volatilities") +
+       title = "Expected returns and standard deviation of selected assets") +
   theme_minimal()
 ```
 ```{r}
@@ -81,9 +79,10 @@ ggcorrplot(
   outline.color = "white",
   colors = c("blue", "white", "red"),
   show.diag = TRUE) +
+  scale_x_discrete(position = "top") +
   theme(
-  axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)
-)
+  axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, size = 10),
+  axis.text.y = element_text(size = 10)) 
 ```
 
 
