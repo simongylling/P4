@@ -19,7 +19,7 @@ library(ggrepel)
 prices <- download_data(type = "stock_prices",
                          symbols = c("AAPL","NVDA", "JPM", "MSFT", "GOOGL", "LLY", "GOOG", "META", "ASML", "HSBC", "GS", "NESN.SW", "AMZN", "TSLA", "NEE", "CBA.AX", "WELL", "BRK-B", "NEM", "SU", "JNJ", "SIE.DE", "MU", "7203.T", "AMD", "CSCO", "ORCL", "XOM", "CAT", "ABBV"),
                          start_date = "2016-01-01",
-                         end_date = "2026-04-21")
+                         end_date = "2026-04-20")
   
 ```
 
@@ -27,63 +27,32 @@ prices <- download_data(type = "stock_prices",
 returns <- prices %>% 
   group_by(symbol) %>% 
   arrange(date) %>% 
-  mutate(ret = adjusted_close/lag(adjusted_close)-1) %>% 
-  select(symbol, date, ret) %>% 
-  drop_na(ret)
+  mutate(dailyret = log(adjusted_close/lag(adjusted_close))) %>% 
+  select(symbol, date, dailyret) %>% 
+  drop_na(dailyret)
 
 ```
+
 ```{r}
 returns %>% 
-  ggplot(aes(x = ret,
-             color = symbol)) +
+  ggplot(aes(x = dailyret)) +
   geom_histogram(bins = 100) +
-  facet_wrap(~symbol, scale = "free_y") + 
   theme_minimal()
 ```
 
 
-```{r}
-trading_volume <- prices %>% 
-  group_by(symbol, date) %>% 
-  summarize(trading_volume = sum(adjusted_close*volume))
 
-trading_volume %>% 
-  ggplot(aes(x = date,
-             y = trading_volume,
-             colour = symbol))+
-  geom_line() +
-  facet_wrap(~symbol, scales = "free") +
-  scale_y_continuous(labels = unit_format(unit = "M", scale = 1e-9)) +
-  labs(x = NULL,
-       y = NULL,
-       title = "Trading volume for Apple, Microsoft, and Nvidia") +
-  theme_minimal()
-
-```
 
 ```{r}
-prices <- prices %>% 
-  group_by(symbol) %>% 
-  mutate(n = n()) %>% 
-  ungroup() %>% 
-  filter(n == max(n)) %>% 
-  select(-n)
-
-returns <- prices %>% 
-  group_by(symbol, date) %>% 
-  summarize(price = last(adjusted_close), .groups = "drop_last") %>% 
-  mutate(dailyret = price/lag(price)-1) %>% 
-  drop_na(dailyret) %>% 
-  select(-price)
-
 assets <- returns %>% 
   group_by(symbol) %>% 
   summarize(mu = mean(dailyret),
-            var = var(dailyret))
+            sd = sd(dailyret))
 ```
+
 ```{r}
 assets %>% 
-  ggplot(aes(x = var,
+  ggplot(aes(x = sd,
              y = mu,
              label = symbol)) +
   geom_point() +
@@ -102,7 +71,7 @@ returns_wide <- returns %>%
 
 sigma <- returns_wide %>% 
   select(-date) %>% 
-  cov()
+  cor(use = "pairwise.complete.obs")
 
 sigma %>% 
   as_tibble(rownames = "symbol_a") |> 
@@ -113,11 +82,7 @@ sigma %>%
     x = NULL, y = NULL, fill = "Covariance",
     title = "Sample covariance matrix of selected assets"
   ) + 
-  scale_fill_gradient2(
-  low = "blue",
-  mid = "white",
-  high = "red"
-)  +
+  scale_fill_continuous(labels = percent)  +
   theme(axis.text.x = element_text(angle = 45, hjust = 1),
         legend.position = "bottom") +
   guides(fill = guide_colorbar(barwidth = 15, barheight = 0.5))
