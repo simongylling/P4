@@ -307,8 +307,81 @@ tau_target <- 2/(A-rf*C)
 summary_tan <- summary_efc %>%
   slice_min(abs(tau - tau_target), n = 1) %>%
   select(tau, mu, sd) %>%
-  as_tibble(type = "Tangency portfolio")
+  mutate(type = "Tangency portfolio") %>% 
+  as_tibble()
 
 summaries <- bind_rows(summaries, summary_tan)
+
+tangency_portfolio <- as.numeric((sigma_inv%*%(R-rf*u))/(A-rf*C)) #Weights for the tangency portfolio
+```
+A plot showing the weights for the tangency portfolio:
+```{r}
+assets <- assets %>% 
+  mutate(tangency_portfolio = tangency_portfolio)
+assets %>% 
+  ggplot(aes(x = tangency_portfolio,
+             y = fct_reorder(symbol, tangency_portfolio),
+             fill = tangency_portfolio > 0)) +
+  geom_col() +
+  labs(x = NULL,
+       y = NULL) +
+  theme(legend.position = "none")
+```
+
+
+```{r}
+summaries %>% 
+  ggplot() +
+  geom_line(data = summary_efc, 
+            aes(x = sd*sqrt(252), y = mu*252), 
+            color = "steelblue") +
+  geom_line(data = summary_rf,
+            aes(x = sd*sqrt(252),
+                y = mu*252),
+            color = "darkgreen") +
+  geom_point(data = summary_min,
+             aes(x = sd*sqrt(252), y = mu*252),
+             color = "red",
+             size = 3) +
+  geom_point(data = assets, 
+             aes(x = sd*sqrt(252), y = mu*252)) +
+  geom_point(data = summary_rf,
+             aes(x=0, 
+                 y=rf*252), 
+                 color ="red", 
+                 size=3) +
+  geom_point(data = summary_tan,
+             aes(x = sd*sqrt(252),
+                 y = mu*252),
+             color = "red",
+             size = 3) +
+  geom_label(data = summary_tan,
+             aes(x = sd*sqrt(252),
+                 y = mu*252,
+             label = "Tangency portfolio"),
+             hjust = -0.1) +
+  geom_label(data = summary_rf,
+             aes(x = 0,
+                 y = rf*252,
+             label = "rf"),
+             hjust = -1) +
+  geom_label(
+    data = summary_min,
+    aes(x = sd*sqrt(252), 
+        y = mu*252, 
+        label = "bold(x)^MIN"),
+    parse = TRUE,
+    vjust = -0.5,
+    hjust = 0
+  ) +
+  geom_label(aes(x = 0.4, y = 0.2),
+           label = "Assets") +
+  scale_x_continuous(labels = scales::percent) +
+  scale_y_continuous(labels = scales::percent,
+                     limits = c(-0.1, 1)) +
+  
+  labs(x = "Standard deviation", 
+       y = "Expected return") +
+  theme_minimal()
 ```
 
