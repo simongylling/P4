@@ -21,7 +21,7 @@ prices <- download_data(type = "stock_prices",
                          symbols = c("NVDA","NXPI","EPAM","BRK-B","PYPL","FDS","CAT","DAL","POOL",
             "AMZN","NCLH","CASY","LLY","BDX","CRL","GOOG","EA","PSKY",
             "WMT","CPB","EL","XOM","OXY","APA","LIN","MLM","MOS",
-            "NEE","ATO","AES","WELL","SBA","ARE"),
+            "NEE","ATO","AES","WELL","SBAC","ARE"),
                          start_date = "2016-01-01",
                          end_date = "2026-04-20")
   
@@ -39,15 +39,22 @@ returns <- prices %>%
 ```
 
 ```{r}
+assets <- returns %>% 
+  group_by(symbol) %>% 
+  summarize(mu = mean(dailyret),
+            sd = sd(dailyret))
+```
+
+```{r}
 subset_returns <- returns %>% 
-  filter(symbol %in% c("NVDA", "BRK-B", "AMZN", "LLY", "GOOG", "CAT"))
+  filter(symbol %in% c("NVDA", "BRK-B", "AMZN"))
 
 subset_returns %>% 
   ggplot(aes(x = dailyret)) +
   geom_histogram(bins = 100,
                  fill = "steelblue") +
   facet_wrap(~symbol, scales = "free") +
-  labs(title = "Histogram over daily returns for AMZN, BRK-B, GOOG, LLY, and NVDA",
+  labs(
        x = "Return",
        y = "Frequency") +
   theme_minimal()
@@ -67,14 +74,6 @@ subset_returns %>%
 
 
 
-
-```{r}
-assets <- returns %>% 
-  group_by(symbol) %>% 
-  summarize(mu = mean(dailyret),
-            sd = sd(dailyret))
-assets <- assets %>% arrange(match(symbol, colnames(sigma)))
-```
 
 ```{r}
 assets %>% 
@@ -127,6 +126,7 @@ x_MIN <- as.vector(sigma_inv %*% u) / as.numeric(u %*% sigma_inv %*% u)
 
 
 ```{r}
+assets <- assets %>% arrange(match(symbol, colnames(sigma)))
 assets <- assets %>% 
   mutate(x_MIN = x_MIN)
 
@@ -241,4 +241,74 @@ risk_free_daily <- download_data(
 rf <- mean(risk_free_daily$risk_free)
 ```
 
+*Capital market line*
+```{r}
+H <- rf^2*C-2*rf*A+B
+summary_rf <- tibble(tau = tau,
+                     rf = rf,
+                     mu = rf + tau/2 * H,
+                     sd = sqrt(tau^2/4 * H),
+                     type = "Risk free portfolio")
+summaries <- bind_rows(summaries, summary_rf)
+
+```
+
+Add CML to the efficient frontier plot:
+
+```{r}
+summaries %>% 
+  ggplot() +
+  geom_line(data = summary_efc, 
+            aes(x = sd*sqrt(252), y = mu*252), 
+            color = "steelblue") +
+  geom_line(data = summary_rf,
+            aes(x = sd*sqrt(252),
+                y = mu*252),
+            color = "darkgreen") +
+  geom_point(data = summary_min,
+             aes(x = sd*sqrt(252), y = mu*252),
+             color = "red",
+             size = 3) +
+  geom_point(data = assets, 
+             aes(x = sd*sqrt(252), y = mu*252)) +
+  geom_point(data = summary_rf,
+             aes(x=0, 
+                 y=rf*252), 
+                 color ="red", 
+                 size=3) +
+  geom_label(data = summary_rf,
+             aes(x = 0,
+                 y = rf*252,
+             label = "r"),
+             parse = TRUE,
+             hjust = -1) +
+  geom_label(
+    data = summary_min,
+    aes(x = sd*sqrt(252), 
+        y = mu*252, 
+        label = "bold(x)^MIN"),
+    parse = TRUE,
+    vjust = -0.5,
+    hjust = 0
+  ) +
+  scale_x_continuous(labels = scales::percent) +
+  scale_y_continuous(labels = scales::percent,
+                     limits = c(-0.1, 1)) +
+  
+  labs(x = "Standard deviation", 
+       y = "Expected return") +
+  theme_minimal()
+```
+
+*Tangency portfolio*
+
+```{r}
+tau_target <- 2/(A-rf*C)
+summary_tan <- summary_efc %>%
+  slice_min(abs(tau - tau_target), n = 1) %>%
+  select(tau, mu, sd) %>%
+  as_tibble(type = "Tangency portfolio")
+
+summaries <- bind_rows(summaries, summary_tan)
+```
 
