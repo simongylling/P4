@@ -75,14 +75,15 @@ assets <- assets %>% arrange(match(symbol, colnames(sigma)))
 
 ```{r}
 assets %>% 
-  ggplot(aes(x = sd,
-             y = mu,
+  ggplot(aes(x = sd*sqrt(252),
+             y = mu*252,
              label = symbol)) +
   geom_point() +
   geom_text_repel() +
-  labs(x = "Volatility",
-       y = "Expected return",
-       title = "Expected returns and standard deviation of selected assets") +
+  scale_x_continuous(labels = percent) +
+  scale_y_continuous(labels = percent) +
+  labs(x = "Standard deviation",
+       y = "Expected return") +
   theme_minimal()
 ```
 ```{r}
@@ -162,7 +163,7 @@ assets %>%
 ```
 
 ```{r}
-tau <- seq(0,0.6, by =0.001)
+tau <- seq(0,0.1, by =0.001)
 A <- as.numeric(u %*% sigma_inv %*% R)
 B <- as.numeric(R %*% sigma_inv %*% R)
 C <- as.numeric(u %*% sigma_inv %*% u)
@@ -186,8 +187,8 @@ summaries <- bind_rows(summary_min, summary_efc)
 Now the data is ready for the efficient frontier plot:
 ```{r}
 summaries %>% 
-  ggplot(aes(x = sd,
-             y = mu)) +
+  ggplot(aes(x = sd*sqrt(252),
+             y = mu*252)) +
   geom_line(color = "steelblue") +
   geom_point(
     data = summary_min,
