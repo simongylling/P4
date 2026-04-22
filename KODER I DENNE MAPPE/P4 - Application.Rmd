@@ -313,6 +313,7 @@ summary_tan <- summary_efc %>%
 summaries <- bind_rows(summaries, summary_tan)
 
 tangency_portfolio <- as.numeric((sigma_inv%*%(R-rf*u))/(A-rf*C)) #Weights for the tangency portfolio
+sharpe_ratio <- as.numeric((tangency_portfolio%*%R - rf)/(tangency_portfolio%*% sigma %*% tangency_portfolio))
 ```
 A plot showing the weights for the tangency portfolio:
 ```{r}
@@ -385,3 +386,4 @@ summaries %>%
   theme_minimal()
 ```
 
+*Capital Asset Pricing Model*
