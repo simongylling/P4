@@ -163,7 +163,7 @@ assets %>%
 ```
 
 ```{r}
-tau <- seq(0,0.1, by =0.001)
+tau <- seq(0,0.8, by =0.001)
 A <- as.numeric(u %*% sigma_inv %*% R)
 B <- as.numeric(R %*% sigma_inv %*% R)
 C <- as.numeric(u %*% sigma_inv %*% u)
@@ -185,31 +185,6 @@ summary_efc <- tibble(tau = tau,
 summaries <- bind_rows(summary_min, summary_efc)
 ```
 Now the data is ready for the efficient frontier plot:
-```{r}
-summaries %>% 
-  ggplot(aes(x = sd*sqrt(252),
-             y = mu*252)) +
-  geom_line(color = "steelblue") +
-  geom_point(
-    data = summary_min,
-    color = "red",
-    size = 3
-  ) +
-  geom_label(
-  data = summary_min,
-  aes(label = "x_MIN"),
-  vjust = -1.,
-  hjust = 0
-) +
-  scale_x_continuous(labels = percent) +
-  scale_y_continuous(labels = percent) +
-  labs(x = "Risk (σ)", 
-       y = "Expected return (μ)",
-       title = "Efficient Frontier") +
-  theme_minimal() +
-  theme(plot.title = element_text(hjust = 0.5,
-                                  size = 20))
-```
 
 ```{r}
 summaries2 <- bind_rows(assets, summary_min, summary_efc)
@@ -219,29 +194,26 @@ summaries2 <- bind_rows(assets, summary_min, summary_efc)
 ```{r}
 summaries2 %>% 
   ggplot() +
-  geom_line(data = summary_efc, aes(x = sd, y = mu), color = "steelblue") +
+  geom_line(data = summary_efc, aes(x = sd*sqrt(252), y = mu*252), color = "steelblue") +
   geom_point(
     data = summary_min,
-    aes(x = sd, y = mu),
+    aes(x = sd*sqrt(252), y = mu*252),
     color = "red",
     size = 3
   ) +
-  geom_path(data = summary_efc, aes(x = sd, y= mu), color = "steelblue") +
-  geom_point(data = assets, aes(x = sd, y = mu), type = NA) +
+  geom_path(data = summary_efc, aes(x = sd*sqrt(252), y= mu*252), color = "steelblue") +
+  geom_point(data = assets, aes(x = sd*sqrt(252), y = mu*252), type = NA) +
   geom_label(
   data = summary_min,
-  aes(x = sd, y=mu, label = "x_MIN"),
+  aes(x = sd*sqrt(252), y=mu*252, label = "x_MIN"),
   vjust = -1.,
   hjust = 0
 ) +
   scale_x_continuous(labels = percent) +
   scale_y_continuous(labels = percent) +
-  labs(x = "Risk (σ)", 
-       y = "Expected return (μ)",
-       title = "Efficient Frontier") +
-  theme_minimal() +
-  theme(plot.title = element_text(hjust = 0.5,
-                                  size = 20))
+  labs(x = "Standard deviation", 
+       y = "Expected return") +
+  theme_minimal() 
 ```
 
 *Import of risk-free rate*
