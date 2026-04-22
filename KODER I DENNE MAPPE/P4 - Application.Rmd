@@ -18,7 +18,10 @@ library(ggcorrplot)
 
 ```{r}
 prices <- download_data(type = "stock_prices",
-                         symbols = c("AAPL","NVDA", "MSFT", "BRK-B", "JPM", "V", "CAT", "GE", "RTX", "AMZN", "TSLA", "HD", "LLY", "JNJ", "ABBV", "GOOG", "META", "NFLX", "WMT", "COST", "PG", "XOM", "CVX", "COP", "LIN", "NEM", "FCX", "NEE", "SO", "DUK", "WELL", "PLD", "EQIX"),
+                         symbols = c("NVDA","NXPI","EPAM","BRK-B","PYPL","FDS","CAT","DAL","POOL",
+            "AMZN","NCLH","CASY","LLY","BDX","CRL","GOOG","EA","PSKY",
+            "WMT","CPB","EL","XOM","OXY","APA","LIN","MLM","MOS",
+            "NEE","ATO","AES","WELL","SBA","ARE"),
                          start_date = "2016-01-01",
                          end_date = "2026-04-20")
   
@@ -132,10 +135,8 @@ assets %>%
              y = fct_reorder(symbol, x_MIN),
              fill = x_MIN > 0)) +
   geom_col() +
-  scale_x_continuous(labels = percent) +
   labs(x = NULL,
-       y = NULL,
-       title = "Portfolio weights for minimum variance") +
+       y = NULL) +
   theme(legend.position = "none")
 ```
 We denote $\overline{R}$ by $R$ in what follows.
@@ -157,13 +158,12 @@ assets %>%
              fill = z_star > 0)) +
   geom_col() +
   labs(x = NULL,
-       y = NULL,
-       title = "Portfolio weights for z* portfolio") +
+       y = NULL) +
   theme(legend.position = "none")
 ```
 
 ```{r}
-tau <- seq(0,0.8, by =0.001)
+tau <- seq(0,0.5, by =0.001)
 A <- as.numeric(u %*% sigma_inv %*% R)
 B <- as.numeric(R %*% sigma_inv %*% R)
 C <- as.numeric(u %*% sigma_inv %*% u)
@@ -182,38 +182,48 @@ summary_efc <- tibble(tau = tau,
                       sd = sqrt((1/C)+(tau^2/4)*(D/C)),
                       type = "Efficient Portfolio")
 
-summaries <- bind_rows(summary_min, summary_efc)
+summaries <- bind_rows(assets, summary_min, summary_efc)
 ```
 Now the data is ready for the efficient frontier plot:
 
-```{r}
-summaries2 <- bind_rows(assets, summary_min, summary_efc)
-
-```
 
 ```{r}
-summaries2 %>% 
+summaries %>% 
   ggplot() +
-  geom_line(data = summary_efc, aes(x = sd*sqrt(252), y = mu*252), color = "steelblue") +
-  geom_point(
-    data = summary_min,
-    aes(x = sd*sqrt(252), y = mu*252),
-    color = "red",
-    size = 3
-  ) +
-  geom_path(data = summary_efc, aes(x = sd*sqrt(252), y= mu*252), color = "steelblue") +
-  geom_point(data = assets, aes(x = sd*sqrt(252), y = mu*252), type = NA) +
+  geom_line(data = summary_efc, 
+            aes(x = sd*sqrt(252), y = mu*252), 
+            color = "steelblue") +
+  
+  geom_point(data = summary_min,
+             aes(x = sd*sqrt(252), y = mu*252),
+             color = "red",
+             size = 3) +
+  
+  geom_path(data = summary_efc, 
+            aes(x = sd*sqrt(252), y = mu*252), 
+            color = "steelblue") +
+  
+  geom_point(data = assets, 
+             aes(x = sd*sqrt(252), y = mu*252)) +
+  
   geom_label(
-  data = summary_min,
-  aes(x = sd*sqrt(252), y=mu*252, label = "x_MIN"),
-  vjust = -1.,
-  hjust = 0
-) +
-  scale_x_continuous(labels = percent) +
-  scale_y_continuous(labels = percent) +
+    data = summary_min,
+    aes(x = sd*sqrt(252), 
+        y = mu*252, 
+        label = "bold(x)^MIN"),
+    parse = TRUE,
+    vjust = -0.5,
+    hjust = 0
+  ) +
+  
+  scale_x_continuous(labels = scales::percent) +
+  scale_y_continuous(labels = scales::percent,
+                     limits = c(-0.1, 1)) +
+  
   labs(x = "Standard deviation", 
        y = "Expected return") +
-  theme_minimal() 
+  
+  theme_minimal()
 ```
 
 *Import of risk-free rate*
