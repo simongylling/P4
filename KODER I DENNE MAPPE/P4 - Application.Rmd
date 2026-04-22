@@ -70,6 +70,7 @@ assets <- returns %>%
   group_by(symbol) %>% 
   summarize(mu = mean(dailyret),
             sd = sd(dailyret))
+assets <- assets %>% arrange(match(symbol, colnames(sigma)))
 ```
 
 ```{r}
@@ -136,14 +137,14 @@ assets %>%
        title = "Portfolio weights for minimum variance") +
   theme(legend.position = "none")
 ```
-We denote $\overline{R}$ by $\mu$ in what follows.
+We denote $\overline{R}$ by $R$ in what follows.
 
 
 ```{r}
-mu <- assets$mu
+R <- assets$mu
 
-z_star <- sigma_inv %*% mu -
-  (as.numeric(u %*% sigma_inv %*% mu) /
+z_star <- sigma_inv %*% R -
+  (as.numeric(u %*% sigma_inv %*% R) /
    as.numeric(u %*% sigma_inv %*% u)) *
   sigma_inv %*% u
 
@@ -161,9 +162,9 @@ assets %>%
 ```
 
 ```{r}
-tau <- seq(0,0.1, by =0.001)
-A <- as.numeric(u %*% sigma_inv %*% mu)
-B <- as.numeric(mu %*% sigma_inv %*% mu)
+tau <- seq(0,0.6, by =0.001)
+A <- as.numeric(u %*% sigma_inv %*% R)
+B <- as.numeric(R %*% sigma_inv %*% R)
 C <- as.numeric(u %*% sigma_inv %*% u)
 D <- B*C-A^2
 
@@ -193,12 +194,55 @@ summaries %>%
     color = "red",
     size = 3
   ) +
+  geom_label(
+  data = summary_min,
+  aes(label = "x_MIN"),
+  vjust = -1.,
+  hjust = 0
+) +
   scale_x_continuous(labels = percent) +
   scale_y_continuous(labels = percent) +
   labs(x = "Risk (σ)", 
        y = "Expected return (μ)",
        title = "Efficient Frontier") +
-  theme_minimal()
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5,
+                                  size = 20))
 ```
+
+```{r}
+summaries2 <- bind_rows(assets, summary_min, summary_efc)
+
+```
+
+```{r}
+summaries2 %>% 
+  ggplot() +
+  geom_line(data = summary_efc, aes(x = sd, y = mu), color = "steelblue") +
+  geom_point(
+    data = summary_min,
+    aes(x = sd, y = mu),
+    color = "red",
+    size = 3
+  ) +
+  geom_path(data = summary_efc, aes(x = sd, y= mu)) +
+  geom_point(data = assets, aes(x = sd, y = mu), type = NA) +
+  geom_label(
+  data = summary_min,
+  aes(x = sd, y=mu, label = "x_MIN"),
+  vjust = -1.,
+  hjust = 0
+) +
+  scale_x_continuous(labels = percent) +
+  scale_y_continuous(labels = percent) +
+  labs(x = "Risk (σ)", 
+       y = "Expected return (μ)",
+       title = "Efficient Frontier") +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5,
+                                  size = 20))
+```
+```
+
 
 
