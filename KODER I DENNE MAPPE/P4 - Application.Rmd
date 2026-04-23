@@ -23,7 +23,7 @@ prices <- download_data(type = "stock_prices",
             "WMT","CPB","EL","XOM","OXY","APA","LIN","MLM","MOS",
             "NEE","ATO","AES","WELL","SBAC","ARE"),
                          start_date = "2016-01-01",
-                         end_date = "2026-04-20")
+                         end_date = "2024-01-1")
   
 ```
 
@@ -163,7 +163,7 @@ assets %>%
 ```
 
 ```{r}
-tau <- seq(0,0.5, by =0.001)
+tau <- seq(0,1, by =0.001)
 A <- as.numeric(u %*% sigma_inv %*% R)
 B <- as.numeric(R %*% sigma_inv %*% R)
 C <- as.numeric(u %*% sigma_inv %*% u)
@@ -291,7 +291,8 @@ summaries %>%
     vjust = -0.5,
     hjust = 0
   ) +
-  scale_x_continuous(labels = scales::percent) +
+  scale_x_continuous(labels = scales::percent,
+                     limits = c(-0.05,0.7)) +
   scale_y_continuous(labels = scales::percent,
                      limits = c(-0.1, 1)) +
   
@@ -313,7 +314,7 @@ summary_tan <- summary_efc %>%
 summaries <- bind_rows(summaries, summary_tan)
 
 tangency_portfolio <- as.numeric((sigma_inv%*%(R-rf*u))/(A-rf*C)) #Weights for the tangency portfolio
-sharpe_ratio <- as.numeric((tangency_portfolio%*%R - rf)/(tangency_portfolio%*% sigma %*% tangency_portfolio))
+sharpe_ratio <- as.numeric((tangency_portfolio%*%R - rf)/sqrt((tangency_portfolio%*% sigma %*% tangency_portfolio))) #Giver 0.13 hvilket ser forkert ud i plot pga annualisering. Gang med kvadratrod 252 og den bliver lige over 2 som giver mening grafisk. Man kan også se at kvadratrod H = Sharpes ratio som beskrevet i projektet.
 ```
 A plot showing the weights for the tangency portfolio:
 ```{r}
@@ -377,7 +378,8 @@ summaries %>%
   ) +
   geom_label(aes(x = 0.4, y = 0.2),
            label = "Assets") +
-  scale_x_continuous(labels = scales::percent) +
+  scale_x_continuous(labels = scales::percent,
+                     limits = c(-0.05,0.7)) +
   scale_y_continuous(labels = scales::percent,
                      limits = c(-0.1, 1)) +
   
@@ -387,3 +389,5 @@ summaries %>%
 ```
 
 *Capital Asset Pricing Model*
+
+First the s&p 500 will be 
