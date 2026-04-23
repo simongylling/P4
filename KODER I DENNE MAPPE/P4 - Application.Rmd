@@ -23,7 +23,7 @@ prices <- download_data(type = "stock_prices",
             "WMT","CPB","EL","XOM","OXY","APA","LIN","MLM","MOS",
             "NEE","ATO","AES","WELL","SBAC","ARE"),
                          start_date = "2016-01-01",
-                         end_date = "2024-01-1")
+                         end_date = "2024-01-01")
   
 ```
 
@@ -164,7 +164,7 @@ assets %>%
 ```
 
 ```{r}
-tau <- seq(0,1, by =0.001)
+tau <- seq(0,1, by = 0.001)
 A <- as.numeric(u %*% sigma_inv %*% R)
 B <- as.numeric(R %*% sigma_inv %*% R)
 C <- as.numeric(u %*% sigma_inv %*% u)
@@ -232,7 +232,7 @@ summaries %>%
 ```{r}
 risk_free_daily <- download_data(
   type = "stock_prices", symbol = "^IRX", 
-  start_date = "2016-10-01", end_date = "2024-04-20"
+  start_date = "2016-10-01", end_date = "2024-01-01"
 ) %>% 
   mutate(
     risk_free = (1 + adjusted_close / 100)^(1 / 252) - 1
@@ -368,7 +368,8 @@ summaries %>%
   geom_label(data = summary_rf,
              aes(x = 0,
                  y = rf*252,
-             label = "rf"),
+             label = "bold(x)[rf]^MIN"),
+             parse = TRUE,
              hjust = -1) +
   geom_label(
     data = summary_min,
@@ -428,9 +429,6 @@ The security market line can be plotted:
 ```{r}
 assets_smlplot %>% 
   ggplot() +
-  geom_line(data = assets_smlplot,
-            aes(x = beta,
-                y = expected_capm*252)) +
   geom_point(data = assets_smlplot,
              aes(x = beta,
                  y = mu*252),
