@@ -228,12 +228,12 @@ assets |>
 ```{r}
 mu <- assets$mu
 
-summary_mvp <- tibble(
+summary_mvp_ <- tibble(
     mu = as.numeric(t(omega_mvp) %*% mu),
     sigma = as.numeric(sqrt(t(omega_mvp) %*% sigma %*% omega_mvp)),
     type = "Minimum-Variance Portfolio"
 )
-summary_mvp
+summary_mvp_
 ```
 
 ```{r}
@@ -257,7 +257,7 @@ mu_bar <- max(assets$mu)
 ```{r}
 tau <- seq(0,1, by = 0.001)
 A <- as.numeric(t(iota) %*% sigma_inv %*% mu)
-B <- as.numeric(t(mu) %*% sigma_inv mu)
+B <- as.numeric(t(mu) %*% sigma_inv %*% mu)
 C <- as.numeric(t(iota) %*% sigma_inv %*% iota)
 D <- B * C - A^2
 E <- as.numeric(t(mu) %*% sigma_inv %*% mu)
@@ -269,10 +269,17 @@ omega_efp <- sapply(tau, function(tau_val){
     omega_mvp + (tau_val / 2) * z_star
 })
 
-summary_efp <- tibble(
+summary_mvp <- tibble(
     mu = A / C,
     sigma = sqrt(1 / C),
-    type = "Efficient Portfolio")
+    type = "Minimum-Variance Portfolio")
+
+summary_efp <- tibble(
+    tau = tau,
+    mu = (A / C) + (tau / 2) * (D / C),
+    sigma = sqrt((1 / C) + (tau^2 / 4) * (D / C)),
+    type = "Efficient Portfolio"
+)
 ```
 
 ```{r}
@@ -337,12 +344,12 @@ summaries |>
 KAPITEL 3:
 
 ```{r}
-risk_free_monthly <- download_data(
+risk_free_daily <- download_data(
     type = "stock_prices", symbol = "^IRX",
     start_date = "2016-01-01", end_date = "2024-01-01"
 ) |>
     mutate(
-        risk_free = (1 + adjusted_close / 100)^(1 / 12) - 1
+        risk_free = (1 + adjusted_close / 100)^(1 / 252) - 1
     ) |>
     select(date, risk_free) |>
     drop_na()
@@ -351,15 +358,29 @@ rf <- mean(risk_free_monthly$risk_free)
 ```
 
 ```{r}
-sigma <- returns_monthly |>
+sigma <- returns |>
     pivot_wider(names_from = symbol, values_from = ret) |>
     select(-date) |>
     cov()
 
-mu <- returns_monthly |>
+mu <- returns |>
     group_by(symbol) |>
     summarise(mu = mean(ret)) |>
     pull(mu)
+```
+
+```{r}
+H <- rf^2 * C - 2 * rf * A + B
+
+summary_rf <- tibble(
+    tau = tau,
+    rf = rf,
+    mu = rf + tau / 2 * H,
+    sigma = sqrt(tau^2 / 4 * H)
+    type = "Risk free portfolio"
+)
+
+summaries <- bind_rows(summaries, summary_rf)
 ```
 
 ```{r}
@@ -375,7 +396,35 @@ efficient_portfolios <- tribble(
     "r[f]", rf, 0
 )
 
-sharpe_ratio <- (mu_w -rf) / sigma_w
+sharpe_ratio_ <- (mu_w -rf) / sigma_w
+```
+
+```{r}
+tau_target <- 2 / (A - rf * C)
+summary_tan <- summary_efp |>
+    slice_min(abs(tau - tau_target), n = 1) |>
+    select(tau, mu, sigma) |>
+    mutate(type = "Tangency portfolio") |>
+    as_tibble()
+
+summaries <- bind_rows(summaries, summary_tan)
+
+tangency_portfolio <- as.numeric((sigma_inv %*% (mu - rf * iota)) / (A - rf * C))
+
+sharpe_ratio <- as.numeric((tangency_portfolio %*% mu - rf) / sqrt((tangency_portfolio %*% sigma %*% tangency_portfolio)))
+```
+
+```{r}
+assets <- assets %>% 
+  mutate(tangency_portfolio = tangency_portfolio)
+assets %>% 
+  ggplot(aes(x = tangency_portfolio,
+             y = fct_reorder(symbol, tangency_portfolio),
+             fill = tangency_portfolio > 0)) +
+  geom_col() +
+  labs(x = NULL,
+       y = NULL) +
+  theme(legend.position = "none")
 ```
 
 ```{r}
@@ -391,7 +440,7 @@ assets |>
         x = "Risk", y = "Expected return",
         title = "The efficient frontier with a risk-free asset"
     ) +
-    geom_abline(aes(intercept = rf, slope = sharpe_ratio), linetype = "dotted")
+    geom_abline(aes(intercept = rf, slope = sharpe_ratio_), linetype = "dotted")
 #####
 ```
 
@@ -457,4 +506,58 @@ capm_results |>
         x = "Estimated asset alphas", y = NULL, fill = "Significant at 95%?",
         title = "Estimated CAPM alphas"
     )
+```
+
+```{r}
+sp500 <- download_data(type = "stock_prices", 
+                       symbols = "^GSPC",
+                       start_date = "2016-01-01",
+                       end_date = "2024-01-01")
+market_returns <- sp500 %>% 
+  arrange(date) %>% 
+  mutate(market_ret = log(adjusted_close/lag(adjusted_close))) %>% 
+  select(date, market_ret) %>% 
+  drop_na()
+data_capm <- returns %>% 
+  left_join(market_returns, by = "date") %>% 
+  mutate(excess_ret = ret - rf,
+         market_excess = market_ret - rf)
+
+betas <- data_capm %>% 
+  group_by(symbol) %>% 
+  summarise(beta = (cov(ret,market_ret))/var(market_ret))
+
+market_R <- mean(market_returns$market_ret)
+sml <- betas %>% 
+  mutate(expected_capm = rf + beta*(market_R-rf))
+
+assets_smlplot <- assets %>% 
+  select(symbol, mu, sigma)
+assets_smlplot <- assets_smlplot %>% 
+  left_join(sml, by = "symbol")
+```
+
+```{assets_smlplot %>%}
+  ggplot() +
+  geom_line(data = assets_smlplot,
+            aes(x = beta,
+                y = expected_capm*252)) +
+  geom_point(data = assets_smlplot,
+             aes(x = beta,
+                 y = mu*252)) +
+  geom_label_repel(data = assets_smlplot,
+                   aes(x = beta,
+                       y = mu*252,
+                       label = symbol),
+                       size = 3,
+                       box.padding = 0.3,
+                       point.padding = 0.2,
+                       max.overlaps = Inf) +
+  geom_abline(intercept = rf*252, slope = (market_R-rf)*252, color = "steelblue") +
+  scale_y_continuous(labels = percent,
+                     breaks = breaks_width(0.1)) +
+  labs(x = "Beta",
+       y ="Expected yearly return") +
+  theme_minimal() +
+  theme(legend.position = "none") {r}
 ```
