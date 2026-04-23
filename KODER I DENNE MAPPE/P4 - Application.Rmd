@@ -18,9 +18,12 @@ library(ggcorrplot)
 
 ```{r}
 prices <- download_data(type = "stock_prices",
-                         symbols = c("AAPL","NVDA", "MSFT", "BRK-B", "JPM", "V", "CAT", "GE", "RTX", "AMZN", "TSLA", "HD", "LLY", "JNJ", "ABBV", "GOOG", "META", "NFLX", "WMT", "COST", "PG", "XOM", "CVX", "COP", "LIN", "NEM", "FCX", "NEE", "SO", "DUK", "WELL", "PLD", "EQIX"),
+                         symbols = c("NVDA","NXPI","EPAM","BRK-B","PYPL","FDS","CAT","DAL","POOL",
+            "AMZN","NCLH","CASY","LLY","BDX","CRL","GOOG","EA","PSKY",
+            "WMT","CPB","EL","XOM","OXY","APA","LIN","MLM","MOS",
+            "NEE","ATO","AES","WELL","SBAC","ARE"),
                          start_date = "2016-01-01",
-                         end_date = "2026-04-20")
+                         end_date = "2024-01-1")
   
 ```
 
@@ -36,15 +39,22 @@ returns <- prices %>%
 ```
 
 ```{r}
+assets <- returns %>% 
+  group_by(symbol) %>% 
+  summarize(mu = mean(dailyret),
+            sd = sd(dailyret))
+```
+
+```{r}
 subset_returns <- returns %>% 
-  filter(symbol %in% c("NVDA", "BRK-B", "AMZN", "LLY", "GOOG", "CAT"))
+  filter(symbol %in% c("NVDA", "BRK-B", "AMZN"))
 
 subset_returns %>% 
   ggplot(aes(x = dailyret)) +
   geom_histogram(bins = 100,
                  fill = "steelblue") +
   facet_wrap(~symbol, scales = "free") +
-  labs(title = "Histogram over daily returns for AMZN, BRK-B, GOOG, LLY, and NVDA",
+  labs(
        x = "Return",
        y = "Frequency") +
   theme_minimal()
@@ -64,14 +74,6 @@ subset_returns %>%
 
 
 
-
-```{r}
-assets <- returns %>% 
-  group_by(symbol) %>% 
-  summarize(mu = mean(dailyret),
-            sd = sd(dailyret))
-assets <- assets %>% arrange(match(symbol, colnames(sigma)))
-```
 
 ```{r}
 assets %>% 
@@ -124,6 +126,7 @@ x_MIN <- as.vector(sigma_inv %*% u) / as.numeric(u %*% sigma_inv %*% u)
 
 
 ```{r}
+assets <- assets %>% arrange(match(symbol, colnames(sigma)))
 assets <- assets %>% 
   mutate(x_MIN = x_MIN)
 
@@ -132,10 +135,8 @@ assets %>%
              y = fct_reorder(symbol, x_MIN),
              fill = x_MIN > 0)) +
   geom_col() +
-  scale_x_continuous(labels = percent) +
   labs(x = NULL,
-       y = NULL,
-       title = "Portfolio weights for minimum variance") +
+       y = NULL) +
   theme(legend.position = "none")
 ```
 We denote $\overline{R}$ by $R$ in what follows.
@@ -157,13 +158,12 @@ assets %>%
              fill = z_star > 0)) +
   geom_col() +
   labs(x = NULL,
-       y = NULL,
-       title = "Portfolio weights for z* portfolio") +
+       y = NULL) +
   theme(legend.position = "none")
 ```
 
 ```{r}
-tau <- seq(0,0.1, by =0.001)
+tau <- seq(0,1, by =0.001)
 A <- as.numeric(u %*% sigma_inv %*% R)
 B <- as.numeric(R %*% sigma_inv %*% R)
 C <- as.numeric(u %*% sigma_inv %*% u)
@@ -182,66 +182,48 @@ summary_efc <- tibble(tau = tau,
                       sd = sqrt((1/C)+(tau^2/4)*(D/C)),
                       type = "Efficient Portfolio")
 
-summaries <- bind_rows(summary_min, summary_efc)
+summaries <- bind_rows(assets, summary_min, summary_efc)
 ```
 Now the data is ready for the efficient frontier plot:
+
+
 ```{r}
 summaries %>% 
-  ggplot(aes(x = sd*sqrt(252),
-             y = mu*252)) +
-  geom_line(color = "steelblue") +
-  geom_point(
-    data = summary_min,
-    color = "red",
-    size = 3
-  ) +
-  geom_label(
-  data = summary_min,
-  aes(label = "x_MIN"),
-  vjust = -1.,
-  hjust = 0
-) +
-  scale_x_continuous(labels = percent) +
-  scale_y_continuous(labels = percent) +
-  labs(x = "Risk (σ)", 
-       y = "Expected return (μ)",
-       title = "Efficient Frontier") +
-  theme_minimal() +
-  theme(plot.title = element_text(hjust = 0.5,
-                                  size = 20))
-```
-
-```{r}
-summaries2 <- bind_rows(assets, summary_min, summary_efc)
-
-```
-
-```{r}
-summaries2 %>% 
   ggplot() +
-  geom_line(data = summary_efc, aes(x = sd, y = mu), color = "steelblue") +
-  geom_point(
-    data = summary_min,
-    aes(x = sd, y = mu),
-    color = "red",
-    size = 3
-  ) +
-  geom_path(data = summary_efc, aes(x = sd, y= mu), color = "steelblue") +
-  geom_point(data = assets, aes(x = sd, y = mu), type = NA) +
+  geom_line(data = summary_efc, 
+            aes(x = sd*sqrt(252), y = mu*252), 
+            color = "steelblue") +
+  
+  geom_point(data = summary_min,
+             aes(x = sd*sqrt(252), y = mu*252),
+             color = "red",
+             size = 3) +
+  
+  geom_path(data = summary_efc, 
+            aes(x = sd*sqrt(252), y = mu*252), 
+            color = "steelblue") +
+  
+  geom_point(data = assets, 
+             aes(x = sd*sqrt(252), y = mu*252)) +
+  
   geom_label(
-  data = summary_min,
-  aes(x = sd, y=mu, label = "x_MIN"),
-  vjust = -1.,
-  hjust = 0
-) +
-  scale_x_continuous(labels = percent) +
-  scale_y_continuous(labels = percent) +
-  labs(x = "Risk (σ)", 
-       y = "Expected return (μ)",
-       title = "Efficient Frontier") +
-  theme_minimal() +
-  theme(plot.title = element_text(hjust = 0.5,
-                                  size = 20))
+    data = summary_min,
+    aes(x = sd*sqrt(252), 
+        y = mu*252, 
+        label = "bold(x)^MIN"),
+    parse = TRUE,
+    vjust = -0.5,
+    hjust = 0
+  ) +
+  
+  scale_x_continuous(labels = scales::percent) +
+  scale_y_continuous(labels = scales::percent,
+                     limits = c(-0.1, 1)) +
+  
+  labs(x = "Standard deviation", 
+       y = "Expected return") +
+  
+  theme_minimal()
 ```
 
 *Import of risk-free rate*
@@ -259,4 +241,153 @@ risk_free_daily <- download_data(
 rf <- mean(risk_free_daily$risk_free)
 ```
 
+*Capital market line*
+```{r}
+H <- rf^2*C-2*rf*A+B
+summary_rf <- tibble(tau = tau,
+                     rf = rf,
+                     mu = rf + tau/2 * H,
+                     sd = sqrt(tau^2/4 * H),
+                     type = "Risk free portfolio")
+summaries <- bind_rows(summaries, summary_rf)
 
+```
+
+Add CML to the efficient frontier plot:
+
+```{r}
+summaries %>% 
+  ggplot() +
+  geom_line(data = summary_efc, 
+            aes(x = sd*sqrt(252), y = mu*252), 
+            color = "steelblue") +
+  geom_line(data = summary_rf,
+            aes(x = sd*sqrt(252),
+                y = mu*252),
+            color = "darkgreen") +
+  geom_point(data = summary_min,
+             aes(x = sd*sqrt(252), y = mu*252),
+             color = "red",
+             size = 3) +
+  geom_point(data = assets, 
+             aes(x = sd*sqrt(252), y = mu*252)) +
+  geom_point(data = summary_rf,
+             aes(x=0, 
+                 y=rf*252), 
+                 color ="red", 
+                 size=3) +
+  geom_label(data = summary_rf,
+             aes(x = 0,
+                 y = rf*252,
+             label = "r"),
+             parse = TRUE,
+             hjust = -1) +
+  geom_label(
+    data = summary_min,
+    aes(x = sd*sqrt(252), 
+        y = mu*252, 
+        label = "bold(x)^MIN"),
+    parse = TRUE,
+    vjust = -0.5,
+    hjust = 0
+  ) +
+  scale_x_continuous(labels = scales::percent,
+                     limits = c(-0.05,0.7)) +
+  scale_y_continuous(labels = scales::percent,
+                     limits = c(-0.1, 1)) +
+  
+  labs(x = "Standard deviation", 
+       y = "Expected return") +
+  theme_minimal()
+```
+
+*Tangency portfolio*
+
+```{r}
+tau_target <- 2/(A-rf*C)
+summary_tan <- summary_efc %>%
+  slice_min(abs(tau - tau_target), n = 1) %>%
+  select(tau, mu, sd) %>%
+  mutate(type = "Tangency portfolio") %>% 
+  as_tibble()
+
+summaries <- bind_rows(summaries, summary_tan)
+
+tangency_portfolio <- as.numeric((sigma_inv%*%(R-rf*u))/(A-rf*C)) #Weights for the tangency portfolio
+sharpe_ratio <- as.numeric((tangency_portfolio%*%R - rf)/sqrt((tangency_portfolio%*% sigma %*% tangency_portfolio))) #Giver 0.13 hvilket ser forkert ud i plot pga annualisering. Gang med kvadratrod 252 og den bliver lige over 2 som giver mening grafisk. Man kan også se at kvadratrod H = Sharpes ratio som beskrevet i projektet.
+```
+A plot showing the weights for the tangency portfolio:
+```{r}
+assets <- assets %>% 
+  mutate(tangency_portfolio = tangency_portfolio)
+assets %>% 
+  ggplot(aes(x = tangency_portfolio,
+             y = fct_reorder(symbol, tangency_portfolio),
+             fill = tangency_portfolio > 0)) +
+  geom_col() +
+  labs(x = NULL,
+       y = NULL) +
+  theme(legend.position = "none")
+```
+
+
+```{r}
+summaries %>% 
+  ggplot() +
+  geom_line(data = summary_efc, 
+            aes(x = sd*sqrt(252), y = mu*252), 
+            color = "steelblue") +
+  geom_line(data = summary_rf,
+            aes(x = sd*sqrt(252),
+                y = mu*252),
+            color = "darkgreen") +
+  geom_point(data = summary_min,
+             aes(x = sd*sqrt(252), y = mu*252),
+             color = "red",
+             size = 3) +
+  geom_point(data = assets, 
+             aes(x = sd*sqrt(252), y = mu*252)) +
+  geom_point(data = summary_rf,
+             aes(x=0, 
+                 y=rf*252), 
+                 color ="red", 
+                 size=3) +
+  geom_point(data = summary_tan,
+             aes(x = sd*sqrt(252),
+                 y = mu*252),
+             color = "red",
+             size = 3) +
+  geom_label(data = summary_tan,
+             aes(x = sd*sqrt(252),
+                 y = mu*252,
+             label = "Tangency portfolio"),
+             hjust = -0.1) +
+  geom_label(data = summary_rf,
+             aes(x = 0,
+                 y = rf*252,
+             label = "rf"),
+             hjust = -1) +
+  geom_label(
+    data = summary_min,
+    aes(x = sd*sqrt(252), 
+        y = mu*252, 
+        label = "bold(x)^MIN"),
+    parse = TRUE,
+    vjust = -0.5,
+    hjust = 0
+  ) +
+  geom_label(aes(x = 0.4, y = 0.2),
+           label = "Assets") +
+  scale_x_continuous(labels = scales::percent,
+                     limits = c(-0.05,0.7)) +
+  scale_y_continuous(labels = scales::percent,
+                     limits = c(-0.1, 1)) +
+  
+  labs(x = "Standard deviation", 
+       y = "Expected return") +
+  theme_minimal()
+```
+
+*Capital Asset Pricing Model*
+
+First the s&p 500 will be 
