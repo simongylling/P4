@@ -433,7 +433,8 @@ assets_smlplot %>%
                 y = expected_capm*252)) +
   geom_point(data = assets_smlplot,
              aes(x = beta,
-                 y = mu*252)) +
+                 y = mu*252),
+                 color = "black") +
   geom_label_repel(data = assets_smlplot,
                    aes(x = beta,
                        y = mu*252,
@@ -450,5 +451,4 @@ assets_smlplot %>%
   theme_minimal() +
   theme(legend.position = "none") 
 ```
-
 
