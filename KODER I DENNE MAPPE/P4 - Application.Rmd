@@ -83,7 +83,8 @@ assets %>%
   geom_point() +
   geom_text_repel() +
   scale_x_continuous(labels = percent) +
-  scale_y_continuous(labels = percent) +
+  scale_y_continuous(labels = percent,
+                     breaks = seq(-0.1, 1, by = 0.1)) +
   labs(x = "Standard deviation",
        y = "Expected return") +
   theme_minimal()
@@ -218,7 +219,8 @@ summaries %>%
   
   scale_x_continuous(labels = scales::percent) +
   scale_y_continuous(labels = scales::percent,
-                     limits = c(-0.1, 1)) +
+                     limits = c(-0.1, 1),
+                     breaks = seq(-0.1, 1, by = 0.1)) +
   
   labs(x = "Standard deviation", 
        y = "Expected return") +
@@ -294,7 +296,8 @@ summaries %>%
   scale_x_continuous(labels = scales::percent,
                      limits = c(-0.05,0.7)) +
   scale_y_continuous(labels = scales::percent,
-                     limits = c(-0.1, 1)) +
+                     limits = c(-0.1, 1),
+                     breaks = seq(-0.1, 1, by = 0.1)) +
   
   labs(x = "Standard deviation", 
        y = "Expected return") +
@@ -381,7 +384,8 @@ summaries %>%
   scale_x_continuous(labels = scales::percent,
                      limits = c(-0.05,0.7)) +
   scale_y_continuous(labels = scales::percent,
-                     limits = c(-0.1, 1)) +
+                     limits = c(-0.1, 1),
+                     breaks = breaks_width(0.1)) +
   
   labs(x = "Standard deviation", 
        y = "Expected return") +
@@ -390,4 +394,61 @@ summaries %>%
 
 *Capital Asset Pricing Model*
 
-First the s&p 500 will be 
+First the s&p 500 will be imported and used as a proxy for the market portfolio.
+```{r}
+sp500 <- download_data(type = "stock_prices", 
+                       symbols = "^GSPC",
+                       start_date = "2016-01-01",
+                       end_date = "2024-01-01")
+market_returns <- sp500 %>% 
+  arrange(date) %>% 
+  mutate(market_ret = log(adjusted_close/lag(adjusted_close))) %>% 
+  select(date, market_ret) %>% 
+  drop_na()
+data_capm <- returns %>% 
+  left_join(market_returns, by = "date") %>% 
+  mutate(excess_ret = dailyret - rf,
+         market_excess = market_ret - rf)
+
+betas <- data_capm %>% 
+  group_by(symbol) %>% 
+  summarise(beta = (cov(dailyret,market_ret))/var(market_ret))
+
+market_R <- mean(market_returns$market_ret)
+sml <- betas %>% 
+  mutate(expected_capm = rf + beta*(market_R-rf))
+
+assets_smlplot <- assets %>% 
+  select(symbol, mu, sd)
+assets_smlplot <- assets_smlplot %>% 
+  left_join(sml, by = "symbol")
+```
+The security market line can be plotted:
+
+```{r}
+assets_smlplot %>% 
+  ggplot() +
+  geom_line(data = assets_smlplot,
+            aes(x = beta,
+                y = expected_capm*252)) +
+  geom_point(data = assets_smlplot,
+             aes(x = beta,
+                 y = mu*252)) +
+  geom_label_repel(data = assets_smlplot,
+                   aes(x = beta,
+                       y = mu*252,
+                       label = symbol),
+                       size = 3,
+                       box.padding = 0.3,
+                       point.padding = 0.2,
+                       max.overlaps = Inf) +
+  geom_abline(intercept = rf*252, slope = (market_R-rf)*252, color = "steelblue") +
+  scale_y_continuous(labels = percent,
+                     breaks = breaks_width(0.1)) +
+  labs(x = "Beta",
+       y ="Expected yearly return") +
+  theme_minimal() +
+  theme(legend.position = "none") 
+```
+
+
