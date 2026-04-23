@@ -49,8 +49,9 @@ stock_list <- prices %>%
 
 ```{r}
 returns <- prices |>
+    group_by(symbol) |>
     arrange(date) |>
-    mutate(ret = adjusted_close / lag(adjusted_close) - 1) |>
+    mutate(ret = log(adjusted_close / lag(adjusted_close))) |>
     select(symbol, date, ret) |>
     drop_na(ret)
 ```
@@ -125,12 +126,18 @@ returns_monthly <- prices_daily |>
 ```
 
 ```{r}
-assets <- returns_monthly |>
+assets_monthly <- returns_monthly |>
     group_by(symbol) |>
     summarize(
         mu = mean(ret),
         sigma = sd(ret)
     )
+```
+
+```{r}
+assets <- returns |>
+    group_by(symbol) |>
+    summarize(mu = mean(ret), sigma = sd(ret))
 ```
 
 ```{r}
@@ -150,31 +157,51 @@ assets |>
 ```
 
 ```{r}
-returns_wide <- returns_monthly |>
+returns_wide <- returns |>
     pivot_wider(names_from = symbol, values_from = ret)
 
-sigma <- returns_wide |>
+sigma_c <- returns_wide |>
     select(-date) |>
-    cov()
+    cov(use = "pairwise.complete.obs")
+
+sigma_c |>
+    ggcorrplot(
+        type = "upper",
+        hc.order = TRUE,
+        outline.color = "white",
+        color = c("blue", "white", "red"),
+        show.diag = TRUE
+    ) +
+    scale_x_discrete(position = "top") +
+    theme(
+        axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, size = 10),
+        axis.text.y = element_text(size = 10)
+    )
 ```
 
 ```{r}
 #####
-sigma |>
-    as_tibble(rownames = "symbol_a") |>
-    pivot_longer(-symbol_a, names_to = "symbol_b") |>
-    ggplot(aes(x = symbol_a, y =fct_rev(symbol_b), fill = value)) +
-    geom_tile() +
-    labs(
-        x = NULL,
-        y = NULL,
-        fill = "(Co-variance)",
-        title = "Covariance Matrix of Asset Returns"
-    ) +
-    scale_fill_continuous(labels = percent) +
-    theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-    guides(fill = guide_colorbar(barwidth = 15, barheight = 0.5))
+#sigma |>
+#    as_tibble(rownames = "symbol_a") |>
+#    pivot_longer(-symbol_a, names_to = "symbol_b") |>
+#    ggplot(aes(x = symbol_a, y =fct_rev(symbol_b), fill = value)) +
+#    geom_tile() +
+#    labs(
+#        x = NULL,
+#        y = NULL,
+#        fill = "(Co-variance)",
+#        title = "Covariance Matrix of Asset Returns"
+#    ) +
+#    scale_fill_continuous(labels = percent) +
+#    theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+#    guides(fill = guide_colorbar(barwidth = 15, barheight = 0.5))
 #####
+```
+
+```{r}
+sigma <- returns_wide |>
+    select(-date) |>
+    cov()
 ```
 
 ```{r}
@@ -210,19 +237,41 @@ summary_mvp
 ```
 
 ```{r}
+z_star <- sigma_inv %*% mu - (as.numeric(iota %*% sigma_inv %*% mu) / as.numeric(iota %*% sigma_inv %*% iota)) * sigma_inv %*% iota
+
+assets <- assets |>
+    mutate(z_star = z_star)
+assets |>
+    ggplot(aes(x = z_star,
+              y = fct_reorder(symbol, z_star), fill = z_star > 0)) +
+    geom_col() +
+    labs(x = NULL,
+        y = NULL) +
+    theme(legend.position = "none")
+```
+
+```{r}
 mu_bar <- max(assets$mu)
 ```
 
 ```{r}
+tau <- seq(0,1, by = 0.001)
+A <- as.numeric(t(iota) %*% sigma_inv %*% mu)
+B <- as.numeric(t(mu) %*% sigma_inv mu)
 C <- as.numeric(t(iota) %*% sigma_inv %*% iota)
-D <- as.numeric(t(iota) %*% sigma_inv %*% mu)
+D <- B * C - A^2
 E <- as.numeric(t(mu) %*% sigma_inv %*% mu)
+
 lambda_tilde <- as.numeric(2 * (mu_bar - D / C) / (E - D^2 / C))
-omega_efp <- as.vector(omega_mvp + lambda_tilde / 2 * (sigma_inv %*% mu - D * omega_mvp))
+omega_efp_ <- as.vector(omega_mvp + lambda_tilde / 2 * (sigma_inv %*% mu - D * omega_mvp))
+
+omega_efp <- sapply(tau, function(tau_val){
+    omega_mvp + (tau_val / 2) * z_star
+})
 
 summary_efp <- tibble(
-    mu = as.numeric(t(omega_efp) %*% mu),
-    sigma = as.numeric(sqrt(t(omega_efp) %*% sigma %*% omega_efp)),
+    mu = A / C,
+    sigma = sqrt(1 / C),
     type = "Efficient Portfolio")
 ```
 
