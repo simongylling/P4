@@ -508,6 +508,14 @@ theory_test <- data_capm %>%
             cov_test = cov(epsilon, F)) %>% 
   arrange(match(symbol, assets$symbol))
 head(theory_test)
+
+min_exp_eps <- theory_test %>% 
+  slice_min(expected_epsilon)
+max_exp_eps <-theory_test %>% 
+  slice_max(expected_epsilon)
+max_cov_test <- theory_test %>% 
+  slice_max(abs(cov_test))
+
 ```
 
 Decomposition of variance (5.2) :
@@ -528,7 +536,8 @@ factor_decomp %>%
   ggplot(aes(x = beta,
              y = idio_share)) +
   geom_point() +
-  geom_label_repel(aes(label = symbol)) +
+  geom_label_repel(aes(label = symbol),
+                   size = 3) +
   scale_y_continuous(labels = percent) +
   labs(x = "Beta", y = "Idoisyncratic share of risk") +
   theme_minimal()
