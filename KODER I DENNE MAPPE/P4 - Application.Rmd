@@ -8,7 +8,6 @@ output: html_document
 
 ```{r setup, include=FALSE, warning=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-knitr::opts_chunk$set(warning = FALSE)
 library(tidyverse)
 library(tidyfinance)
 library(scales)
@@ -413,9 +412,11 @@ data_capm <- returns %>%
 
 betas <- data_capm %>% 
   group_by(symbol) %>% 
-  summarise(beta = (cov(dailyret,market_ret))/var(market_ret))
+  summarise(beta = (cov(dailyret,market_ret))/var(market_ret)) %>% 
+  arrange(match(symbol, assets$symbol))
 
 market_R <- mean(market_returns$market_ret)
+Market_var <- var(market_returns$market_ret)
 sml <- betas %>% 
   mutate(expected_capm = rf + beta*(market_R-rf))
 
@@ -448,5 +449,88 @@ assets_smlplot %>%
        y ="Expected yearly return") +
   theme_minimal() +
   theme(legend.position = "none") 
+```
+Sharpe
+```{r}
+sharpe_ratio_market <- (market_R-rf)/sqrt(Market_var) #husk gang med sqrt(252) for årlig.
+assets <- assets %>% 
+  mutate(sharpe = (mu-rf)/sd)
+
+assets %>% 
+  ggplot(aes(x = sharpe*sqrt(252),
+             y = fct_reorder(symbol, sharpe),
+             fill = sharpe > 0)) +
+  geom_col() +
+  labs(x = NULL,
+       y = NULL) +
+  theme(legend.position = "none")
+```
+
+*Capm as a factor model*
+What is the difference between reality and capm ? (Epsilon in factor model)
+```{r}
+assets_smlplot <- assets_smlplot %>% 
+  mutate(epsilon = mu-expected_capm)
+```
+
+Prøvede at se om dette kunne være interessant, men det ligner bare et tidligere fuldstændig. Men det er måske interessant i sig selv, jeg ved det ikke. 
+```{r}
+assets_smlplot %>% 
+  ggplot() +
+  geom_point(data = assets_smlplot,
+             aes(x = beta,
+                 y = epsilon*252),
+             color = "black") +
+  geom_label_repel(data = assets_smlplot,
+                   aes(x = beta,
+                       y = epsilon*252,
+                       label = symbol),
+                       size = 3,
+                       box.padding = 0.3,
+                       point.padding = 0.2,
+                       max.overlaps = Inf) +
+  labs(x = NULL,
+       y = NULL) +
+  theme_minimal()
+```
+```{r}
+data_capm <- data_capm %>% 
+  left_join(betas, by = "symbol") %>% 
+  group_by(symbol) %>% 
+  mutate(F = market_ret - market_R, 
+         epsilon = dailyret - rf - beta*(market_ret - rf))
+```
+Test the theory from the project i.e that the expected value of epsilon is zero and that epsilon is uncorrelated with the market factor (der er flere i projektet, ved ikke hvilke er vigtigst):
+```{r}
+theory_test <- data_capm %>% 
+  group_by(symbol) %>% 
+  summarise(expected_epsilon = mean(epsilon),
+            cov_test = cov(epsilon, F)) %>% 
+  arrange(match(symbol, assets$symbol))
+head(theory_test)
+```
+
+Decomposition of variance (5.2) :
+```{r}
+factor_var <- var(data_capm$F)
+factor_decomp <- data_capm %>% 
+  group_by(symbol) %>% 
+  summarise(beta = first(beta),
+            total_var = var(dailyret),
+            idio_var = var(epsilon)) %>% 
+  mutate(sys_risk = beta^2*factor_var,
+         idio_share = idio_var/total_var) %>% 
+  arrange(match(symbol, assets$symbol))
+```
+A plot:
+```{r}
+factor_decomp %>% 
+  ggplot(aes(x = beta,
+             y = idio_share)) +
+  geom_point() +
+  geom_label_repel(aes(label = symbol)) +
+  scale_y_continuous(labels = percent) +
+  labs(x = "Beta", y = "Idoisyncratic share of risk") +
+  theme_minimal()
 ```
 
