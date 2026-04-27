@@ -421,7 +421,7 @@ sml <- betas %>%
   mutate(expected_capm = rf + beta*(market_R-rf))
 
 assets_smlplot <- assets %>% 
-  select(symbol, mu, sd)
+  select(symbol, mu, sd, tangency_portfolio)
 assets_smlplot <- assets_smlplot %>% 
   left_join(sml, by = "symbol")
 ```
@@ -432,8 +432,8 @@ assets_smlplot %>%
   ggplot() +
   geom_point(data = assets_smlplot,
              aes(x = beta,
-                 y = mu*252),
-                 color = "black") +
+                 y = mu*252,
+                 color = tangency_portfolio>0)) +
   geom_label_repel(data = assets_smlplot,
                    aes(x = beta,
                        y = mu*252,
@@ -530,7 +530,7 @@ factor_decomp <- data_capm %>%
          idio_share = idio_var/total_var) %>% 
   arrange(match(symbol, assets$symbol))
 ```
-A plot:
+A plot of beta against idiosyncratic share of total risk for each asset:
 ```{r}
 factor_decomp %>% 
   ggplot(aes(x = beta,
@@ -540,6 +540,101 @@ factor_decomp %>%
                    size = 3) +
   scale_y_continuous(labels = percent) +
   labs(x = "Beta", y = "Idoisyncratic share of risk") +
+  theme_minimal()
+```
+
+*Application part 2*
+
+```{r}
+prices_2425 <- download_data(type = "stock_prices",
+                         symbols = c("NVDA","NXPI","EPAM","BRK-B","PYPL","FDS","CAT","DAL","POOL",
+            "AMZN","NCLH","CASY","LLY","BDX","CRL","GOOG","EA","PSKY",
+            "WMT","CPB","EL","XOM","OXY","APA","LIN","MLM","MOS",
+            "NEE","ATO","AES","WELL","SBAC","ARE"),
+                         start_date = "2024-01-01",
+                         end_date = "2026-01-01")
+  
+```
+
+```{r}
+returns_2425 <- prices_2425 %>% 
+  group_by(symbol) %>% 
+  arrange(date) %>% 
+  mutate(dailyret = log(adjusted_close/lag(adjusted_close))) %>% 
+  select(symbol, date, dailyret) %>% 
+  drop_na(dailyret) %>% 
+  mutate(cum_ret = cumsum(dailyret)) %>% 
+  ungroup()
+```
+
+```{r}
+w_minfc <- setNames(assets$x_MIN, assets$symbol)
+w_tanfc <- setNames(assets$tangency_portfolio, assets$symbol)
+```
+Minimum variance portfolio:
+```{r}
+port_min <- returns_2425 %>% 
+  filter(symbol %in% names(w_minfc)) %>% 
+  mutate(weight = w_minfc[symbol]) %>% 
+  group_by(date) %>% 
+  summarise(ret = sum(dailyret*weight)) %>% 
+  mutate(portfolio = "Min variance")
+```
+Tangency portfolio:
+```{r}
+port_tan <- returns_2425 %>% 
+  filter(symbol %in% names(w_tanfc)) %>% 
+  mutate(weight = w_tanfc[symbol]) %>% 
+  group_by(date) %>% 
+  summarise(ret = sum(dailyret*weight)) %>% 
+  mutate(portfolio = "Tangency")
+```
+Market:
+```{r}
+sp500_2425 <- download_data(type = "stock_prices", 
+                       symbols = "^GSPC",
+                       start_date = "2024-01-01",
+                       end_date = "2026-01-01")
+market_returns_2425 <- sp500_2425 %>% 
+  arrange(date) %>% 
+  mutate(ret = log(adjusted_close/lag(adjusted_close))) %>% 
+  select(date, ret) %>% 
+  drop_na() %>% 
+  mutate(portfolio = "Market")
+```
+Combine them together:
+```{r}
+portfolios <- bind_rows(port_min, market_returns_2425)
+```
+Plot:
+```{r}
+portfolios %>% 
+  group_by(portfolio) %>% 
+  arrange(date) %>% 
+  mutate(cum = exp(cumsum(ret))) %>% 
+  ggplot(aes(x = date,
+             y = 100*cum,
+             color = portfolio)) +
+  geom_line() +
+  labs(x = "Date",
+       y = "Return index",
+       color = "Portfolio") +
+  theme_minimal()
+```
+With the tangency portfolio:
+```{r}
+portfolios2 <- bind_rows(port_min, port_tan, market_returns_2425)
+portfolios2 %>% 
+  group_by(portfolio) %>% 
+  arrange(date) %>% 
+  mutate(cum = exp(cumsum(ret))) %>% 
+  ggplot(aes(x = date,
+             y = 100*cum,
+             color = portfolio)) +
+  geom_line() +
+  labs(x = "Date",
+       y = "Return index",
+       color = "Portfolio") +
   theme_minimal()
 ```
 
