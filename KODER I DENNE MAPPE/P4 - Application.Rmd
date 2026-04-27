@@ -638,3 +638,56 @@ portfolios2 %>%
   theme_minimal()
 ```
 
+Beta comparison:
+
+```{r}
+market_returns_2425. <- sp500_2425 %>% 
+  arrange(date) %>% 
+  mutate(market_ret = log(adjusted_close/lag(adjusted_close))) %>% 
+  select(date, market_ret) %>% 
+  drop_na() 
+```
+
+```{r}
+data_capm_2425 <- returns_2425 %>% 
+  left_join(market_returns_2425., by = "date") %>% 
+  select(symbol, date, market_ret, dailyret)  
+
+betas_2425 <- data_capm_2425 %>% 
+  group_by(symbol) %>% 
+  summarise(beta_2425 = cov(dailyret,market_ret)/var(market_ret))
+
+beta_compare <- betas %>% 
+  rename(beta_old = beta) %>% 
+  left_join(betas_2425, by = "symbol") %>% 
+  mutate(diff = beta_2425-beta_old)
+```
+
+
+```{r}
+beta_compare %>% 
+  ggplot(aes(x = reorder(symbol, diff), y = diff)) +
+  geom_col(aes(fill = diff > 0)) +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  coord_flip() +
+  scale_fill_manual(values = c("red", "darkgreen"), guide = FALSE) +
+  labs(
+    title = "Ændring i beta",
+    x = NULL,
+    y = "Diff (ny - gammel)"
+  ) +
+  theme_minimal()
+```
+
+```{r}
+beta_compare %>% 
+  ggplot(aes(x = diff,
+         y = fct_reorder(symbol, diff),
+         fill = diff > 0)) +
+  geom_col() + 
+  theme_minimal() +
+  labs(x = NULL,
+       y = NULL) +
+  theme(legend.position = "none")
+```
+
