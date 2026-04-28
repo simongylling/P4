@@ -619,7 +619,8 @@ portfolios %>%
   labs(x = "Date",
        y = "Return index",
        color = "Portfolio") +
-  theme_minimal()
+  theme_minimal() +
+  theme(legend.position = "top")
 ```
 With the tangency portfolio:
 ```{r}
@@ -635,7 +636,8 @@ portfolios2 %>%
   labs(x = "Date",
        y = "Return index",
        color = "Portfolio") +
-  theme_minimal()
+  theme_minimal() +
+  theme(legend.position = "top")
 ```
 
 Beta comparison:
@@ -663,31 +665,90 @@ beta_compare <- betas %>%
   mutate(diff = beta_2425-beta_old)
 ```
 
-
-```{r}
-beta_compare %>% 
-  ggplot(aes(x = reorder(symbol, diff), y = diff)) +
-  geom_col(aes(fill = diff > 0)) +
-  geom_hline(yintercept = 0, linetype = "dashed") +
-  coord_flip() +
-  scale_fill_manual(values = c("red", "darkgreen"), guide = FALSE) +
-  labs(
-    title = "Ændring i beta",
-    x = NULL,
-    y = "Diff (ny - gammel)"
-  ) +
-  theme_minimal()
-```
-
 ```{r}
 beta_compare %>% 
   ggplot(aes(x = diff,
          y = fct_reorder(symbol, diff),
          fill = diff > 0)) +
   geom_col() + 
+  scale_x_continuous(labels = percent) +
   theme_minimal() +
   labs(x = NULL,
        y = NULL) +
+  coord_flip() +
+  theme(
+  axis.text.x = element_text(angle = 45, vjust = 0.7, hjust = 1, size = 10),
+  axis.text.y = element_text(size = 10)) +
   theme(legend.position = "none")
 ```
 
+```{r}
+beta_cor <- cor(beta_compare$beta_old, beta_compare$beta_2425)
+```
+
+# 1. Find top 5 og bund 5 weights
+```{r}
+top_bottom <- assets %>% 
+  select(symbol, tangency_portfolio) %>% 
+  arrange(desc(tangency_portfolio)) %>% 
+  slice(c(1:4, (n()-3):n()))
+```
+
+# 2. Hent data (kun de 10 aktier)
+```{r}
+prices_test <- download_data(
+  type = "stock_prices",
+  symbols = top_bottom$symbol,
+  start_date = "2024-01-01",
+  end_date = "2026-01-01"
+)
+```
+
+
+# 3. Beregn returns
+```{r}
+returns_test <- prices_test %>% 
+  group_by(symbol) %>% 
+  arrange(date) %>% 
+  mutate(ret = log(adjusted_close / lag(adjusted_close))) %>% 
+  select(symbol, date, ret) %>% 
+  drop_na()
+```
+
+# 4. Kobl weights + farve
+```{r}
+returns_test <- returns_test %>% 
+  left_join(top_bottom, by = "symbol") %>% 
+  mutate(color_flag = ifelse(tangency_portfolio < 0, "negative", "positive"))
+```
+
+# 5. Lav indeks
+```{r}
+returns_test <- returns_test %>% 
+  group_by(symbol) %>% 
+  arrange(date) %>% 
+  mutate(
+    cum = exp(cumsum(ret)),
+    index = 100 * cum / first(cum)
+  )
+```
+
+# 6. Plot
+```{r}
+returns_test %>% 
+  ggplot(aes(x = date,
+             y = index,
+             group = symbol,
+             color = color_flag)) +
+  
+  geom_line(alpha = 0.9) +
+  
+  scale_color_manual(values = c("negative" = "red",
+                                "positive" = "black")) +
+  
+  labs(x = "Date",
+       y = "Return index") +
+  coord_fixed(ratio = 20/30)+
+  theme_minimal() +
+  theme(legend.position = "none")
+```
