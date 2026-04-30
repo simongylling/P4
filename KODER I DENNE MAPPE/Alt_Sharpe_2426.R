@@ -70,7 +70,7 @@ rf_1 <- mean(risk_free_daily_1$risk_free)
 
 tangency_portfolio_1 <- as.numeric((sigma_inv_1%*%(R_1-rf_1*u_1))/(A_1-rf_1*C_1)) #Weights for the tangency portfolio
 
-sharpe_ratio_1 <- as.numeric((tangency_portfolio%*%R_1 - rf_1)/sqrt((tangency_portfolio%*% sigma_1 %*% tangency_portfolio))) 
+sharpe_ratio_1 <- as.numeric((tangency_portfolio_1%*%R_1 - rf_1)/sqrt((tangency_portfolio_1%*% sigma_1 %*% tangency_portfolio_1))) 
 
 ###### Hvis du køre denne sammen med Jacobs kode og får den gammle "tangency_portfolio" ude i din data og variable consol til højre kan den kode køres, og du vil få Sharpe ratio på 2.065386.
 
