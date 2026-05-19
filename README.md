@@ -1,1 +1,1 @@
-Denne Git repository består af en eller flere koder brugt til vores P4-projekt opgave.
+Denne GitHub repository indeholder koder brugt til vores P4-projekt opgave. Den største fil som er brugt til application hedder "p4-Application.rmd"
